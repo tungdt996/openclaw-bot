@@ -1,0 +1,29 @@
+# Environment variables (contains secrets)
+.env
+
+# Kubernetes config (contains cluster credentials)
+kubeconfig/config
+kubeconfig/*.yaml
+kubeconfig/*.yml
+
+# OpenClaw runtime data
+openclaw-data/
+openclaw-workspace/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/

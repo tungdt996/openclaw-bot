@@ -1,0 +1,82 @@
+{
+  // OpenClaw K8s Operations Bot Configuration
+  // JSON5 format - comments and trailing commas are allowed
+
+  identity: {
+    name: "K8s-Ops-Bot",
+    theme: "senior SRE assistant specialized in Kubernetes operations, monitoring, and troubleshooting",
+    emoji: "⎈"
+  },
+
+  agents: {
+    defaults: {
+      workspace: "~/.openclaw/workspace",
+      userTimezone: "Asia/Ho_Chi_Minh",
+      model: {
+        primary: "openai/gpt-4o",
+        fallbacks: ["openai/gpt-4o-mini"]
+      },
+      thinkingDefault: "low",
+      timeoutSeconds: 300,
+      maxConcurrent: 2
+    }
+  },
+
+  channels: {
+    telegram: {
+      enabled: true,
+      // Replace with your actual bot token from @BotFather
+      botToken: "${TELEGRAM_BOT_TOKEN}",
+      // Replace with your Telegram user ID(s) - get from @userinfobot
+      dmPolicy: "allowlist",
+      allowFrom: ["${TELEGRAM_ALLOWED_USERS}"],
+      groupPolicy: "allowlist",
+      groupAllowFrom: ["${TELEGRAM_ALLOWED_USERS}"],
+      groups: {
+        "*": { requireMention: true }
+      }
+    }
+  },
+
+  tools: {
+    allow: ["exec", "read", "write", "edit"],
+    elevated: {
+      enabled: true
+    }
+  },
+
+  session: {
+    scope: "per-sender",
+    reset: {
+      mode: "idle",
+      idleMinutes: 60
+    },
+    resetTriggers: ["/new", "/reset"]
+  },
+
+  logging: {
+    level: "info",
+    consoleLevel: "info",
+    consoleStyle: "pretty",
+    redactSensitive: "tools"
+  },
+
+  gateway: {
+    mode: "local",
+    port: 18789,
+    bind: "0.0.0.0",
+    controlUi: {
+      enabled: true,
+      basePath: "/openclaw"
+    }
+  },
+
+  // MCP Server for Kubernetes cluster operations
+  mcp: {
+    servers: {
+      "kubernetes": {
+        url: "http://kubernetes-mcp-server:8089/sse"
+      }
+    }
+  }
+}
