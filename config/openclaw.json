@@ -64,7 +64,7 @@
   gateway: {
     mode: "local",
     port: 18789,
-    bind: "0.0.0.0",
+    bind: "lan",
     controlUi: {
       enabled: true,
       basePath: "/openclaw"
@@ -72,11 +72,13 @@
   },
 
   // MCP Server for Kubernetes cluster operations
-  mcp: {
-    servers: {
-      "kubernetes": {
-        url: "http://kubernetes-mcp-server:8089/sse"
-      }
+  // Uses mcpServers key following de facto MCP client standard.
+  // SSE transport connects to the kubernetes-mcp-server container.
+  // If OpenClaw rejects this key, configure MCP via CLI instead:
+  //   openclaw mcp add kubernetes --url http://kubernetes-mcp-server:8089/sse
+  mcpServers: {
+    "kubernetes": {
+      url: "http://kubernetes-mcp-server:8089/sse"
     }
   }
 }

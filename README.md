@@ -15,7 +15,7 @@ User (Telegram) --> OpenClaw Gateway --> OpenAI ChatGPT API
 
 | Service | Role | Image |
 |---------|------|-------|
-| OpenClaw | AI gateway, Telegram integration, tool orchestration | `node:20-alpine` + openclaw npm |
+| OpenClaw | AI gateway, Telegram integration, tool orchestration | `ghcr.io/openclaw/openclaw:latest` |
 | Kubernetes MCP Server | K8s API bridge via Model Context Protocol | `ghcr.io/containers/kubernetes-mcp-server:latest` |
 | OpenAI ChatGPT | AI reasoning and tool selection | External API |
 
@@ -61,20 +61,7 @@ kubectl config view --minify --flatten > kubeconfig/config
 
 ### 3. Configure Telegram bot settings
 
-Edit `config/openclaw.json` and replace the placeholder values:
-
-```jsonc
-{
-  "channels": {
-    "telegram": {
-      "botToken": "YOUR_ACTUAL_BOT_TOKEN",
-      "allowFrom": ["YOUR_TELEGRAM_USER_ID"]
-    }
-  }
-}
-```
-
-> Alternatively, if OpenClaw supports environment variable interpolation (`${VAR}`), the defaults from `.env` will be used.
+The default `config/openclaw.json` uses `${VAR}` environment variable interpolation, so values from `.env` are applied automatically. No manual edits needed unless you want to customize further.
 
 ### 4. Start the services
 
@@ -89,10 +76,13 @@ docker compose up -d
 docker compose ps
 
 # Check OpenClaw logs
-docker compose logs -f openclaw
+docker compose logs -f openclaw-gateway
 
 # Check K8s MCP Server logs
 docker compose logs -f kubernetes-mcp-server
+
+# Check gateway health
+curl -fsS http://127.0.0.1:18789/healthz
 ```
 
 ### 6. Chat with your bot
@@ -123,7 +113,7 @@ Key sections:
 - **identity** - Bot name and personality theme
 - **agents.defaults.model** - AI model selection (default: `openai/gpt-4o`)
 - **channels.telegram** - Telegram bot settings and access control
-- **mcp.servers.kubernetes** - Kubernetes MCP Server connection URL
+- **mcpServers.kubernetes** - Kubernetes MCP Server connection URL (SSE transport)
 - **gateway** - Gateway port and UI settings
 
 ### Kubernetes MCP Server
@@ -173,16 +163,16 @@ With `containers/kubernetes-mcp-server`, these tools are available to the AI:
 ### View logs
 
 ```bash
-docker compose logs -f                    # All services
-docker compose logs -f openclaw           # OpenClaw only
-docker compose logs -f kubernetes-mcp-server  # K8s MCP only
+docker compose logs -f                         # All services
+docker compose logs -f openclaw-gateway        # OpenClaw only
+docker compose logs -f kubernetes-mcp-server   # K8s MCP only
 ```
 
 ### Restart services
 
 ```bash
-docker compose restart                    # All
-docker compose restart openclaw           # OpenClaw only
+docker compose restart                         # All
+docker compose restart openclaw-gateway        # OpenClaw only
 ```
 
 ### Stop
@@ -205,21 +195,23 @@ docker compose up -d
 - **API keys**: Stored in `.env` which is git-ignored. Never hardcode in config files.
 - **Read-only mode**: K8s MCP server defaults to read-only, preventing accidental cluster changes.
 - **Network isolation**: K8s MCP server is only accessible via Docker internal network (`expose`, not `ports`).
+- **Gateway binding**: Gateway binds to `lan` mode and the Docker port is published to `127.0.0.1` only (not `0.0.0.0`).
 - **Telegram access control**: Only whitelisted user IDs can interact with the bot.
 - **No new privileges**: Both containers run with `no-new-privileges` security option.
 - **Resource limits**: CPU and memory limits are set to prevent resource exhaustion.
+- **Health checks**: Built-in Docker healthcheck monitors gateway availability via `/healthz`.
 
 ## Troubleshooting
 
 ### OpenClaw not starting
 
 ```bash
-docker compose logs openclaw
+docker compose logs openclaw-gateway
 ```
 
 Common issues:
 - Missing or invalid `OPENAI_API_KEY`
-- Invalid `openclaw.json` syntax (use a JSON5 validator)
+- Invalid `openclaw.json` syntax -- OpenClaw uses strict schema validation; unknown keys cause startup failure. Run `openclaw doctor --fix` inside the container to diagnose.
 - Port 18789 already in use
 
 ### K8s MCP Server connection issues
