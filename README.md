@@ -4,11 +4,29 @@ Automate Kubernetes cluster operations through Telegram using OpenClaw as the AI
 
 ## Architecture
 
-```
-User (Telegram) --> OpenClaw Gateway --> OpenAI ChatGPT API
-                         |
-                         v (MCP Protocol / SSE)
-                  Kubernetes MCP Server --> K8s Cluster
+```mermaid
+flowchart LR
+  subgraph Client [Client]
+    User[User via Telegram]
+  end
+
+  subgraph OpenClaw [OpenClaw Bot]
+    Gateway[OpenClaw Gateway]
+  end
+
+  subgraph External [External]
+    OpenAI[OpenAI ChatGPT API]
+  end
+
+  subgraph K8s [Kubernetes]
+    MCP[K8s MCP Server]
+    Cluster[K8s Cluster]
+  end
+
+  User -->|Telegram| Gateway
+  Gateway -->|Chat completion| OpenAI
+  Gateway -->|MCP over SSE| MCP
+  MCP --> Cluster
 ```
 
 **Components:**
