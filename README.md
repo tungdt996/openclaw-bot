@@ -116,7 +116,36 @@ docker compose logs -f kubernetes-mcp-server
 curl -fsS http://127.0.0.1:18789/healthz
 ```
 
-### 6. Chat with your bot
+### 6. Access the Web UI
+
+After startup, the console prints the access URL with token:
+
+```
+==========================================
+  OpenClaw Gateway - Access URLs
+==========================================
+  UI:  http://localhost:18789/?token=<your-token>
+  API: http://localhost:18789
+==========================================
+```
+
+Open the URL in your browser. On first access, you need to **approve the device**:
+
+```bash
+# 1. Open the UI URL in browser and click "Connect"
+
+# 2. List pending devices
+docker exec -it openclaw-gateway node dist/index.js devices list
+
+# 3. Approve the pending request (copy the Request ID from the table)
+docker exec -it openclaw-gateway node dist/index.js devices approve <request-id>
+```
+
+**Important:** The request ID expires quickly. Open the browser first, click Connect, then immediately run the `devices list` and `approve` commands.
+
+Once approved, the dashboard shows "Health: OK" and you can use the Chat tab.
+
+### 7. Chat with your bot
 
 Open Telegram and message your bot. Try commands like:
 
@@ -284,6 +313,18 @@ Common issues:
 - Invalid or missing kubeconfig at `kubeconfig/config`
 - Kubeconfig references `localhost` or `127.0.0.1` which won't work from inside Docker (use the actual cluster API server address)
 - Cluster API server not reachable from Docker network
+
+### Web UI shows "pairing required" or "Offline"
+
+The OpenClaw dashboard requires device approval for each new browser:
+
+```bash
+# Open the UI and click Connect first, then quickly run:
+docker exec -it openclaw-gateway node dist/index.js devices list
+docker exec -it openclaw-gateway node dist/index.js devices approve <request-id>
+```
+
+If you get `Error: unknown requestId`, the request expired. Refresh the browser, click Connect again, and repeat the approve process.
 
 ### Bot not responding on Telegram
 
