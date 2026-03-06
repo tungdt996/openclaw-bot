@@ -2,12 +2,6 @@
   // OpenClaw K8s Operations Bot Configuration
   // JSON5 format - comments and trailing commas are allowed
 
-  identity: {
-    name: "K8s-Ops-Bot",
-    theme: "senior SRE assistant specialized in Kubernetes operations, monitoring, and troubleshooting",
-    emoji: "⎈"
-  },
-
   agents: {
     defaults: {
       workspace: "~/.openclaw/workspace",
@@ -19,7 +13,17 @@
       thinkingDefault: "low",
       timeoutSeconds: 300,
       maxConcurrent: 2
-    }
+    },
+    list: [
+      {
+        id: "default",
+        identity: {
+          name: "K8s-Ops-Bot",
+          theme: "senior SRE assistant specialized in Kubernetes operations, monitoring, and troubleshooting",
+          emoji: "⎈"
+        }
+      }
+    ]
   },
 
   channels: {
@@ -65,20 +69,20 @@
     mode: "local",
     port: 18789,
     bind: "lan",
+    auth: {
+      token: "${OPENCLAW_AUTH_TOKEN}"
+    },
     controlUi: {
       enabled: true,
-      basePath: "/openclaw"
+      basePath: "/",
+      allowedOrigins: [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789"
+      ]
     }
   },
 
-  // MCP Server for Kubernetes cluster operations
-  // Uses mcpServers key following de facto MCP client standard.
-  // SSE transport connects to the kubernetes-mcp-server container.
-  // If OpenClaw rejects this key, configure MCP via CLI instead:
-  //   openclaw mcp add kubernetes --url http://kubernetes-mcp-server:8089/sse
-  mcpServers: {
-    "kubernetes": {
-      url: "http://kubernetes-mcp-server:8089/sse"
-    }
-  }
+  // Kubernetes MCP integration is handled via mcporter + custom skill.
+  // Config: config/mcporter.json  (MCP server connection)
+  // Skill:  skills/kubernetes-ops/ (teaches agent to use mcporter CLI)
 }

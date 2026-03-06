@@ -1,0 +1,11 @@
+FROM ghcr.io/openclaw/openclaw:latest
+
+USER root
+RUN mkdir -p /home/node/.openclaw /home/node/.mcporter \
+ && chown -R node:node /home/node/.openclaw /home/node/.mcporter
+RUN for i in 1 2 3 4 5; do \
+      npm install -g mcporter && break; \
+      echo "Retry $i: npm install failed, waiting 10s..."; \
+      sleep 10; \
+    done
+USER node

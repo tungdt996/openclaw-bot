@@ -1,30 +1,45 @@
 services:
   openclaw-gateway:
-    image: ghcr.io/openclaw/openclaw:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.openclaw
+    image: openclaw-k8s-bot:local
     container_name: openclaw-gateway
     restart: unless-stopped
     environment:
       HOME: /home/node
       TERM: xterm-256color
+      NODE_OPTIONS: "--max-old-space-size=1536"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_ALLOWED_USERS: ${TELEGRAM_ALLOWED_USERS}
+      OPENCLAW_AUTH_TOKEN: ${OPENCLAW_AUTH_TOKEN}
     volumes:
-      - ./config/openclaw.json:/home/node/.openclaw/openclaw.json
-      - openclaw-workspace:/home/node/.openclaw/workspace
+      - ./config/openclaw.json:/tmp/staging/openclaw.json:ro
+      - ./config/mcporter.json:/tmp/staging/mcporter.json:ro
+      - ./skills/kubernetes-ops:/tmp/staging/skills/kubernetes-ops:ro
+      - openclaw-data:/home/node/.openclaw
     ports:
       - "127.0.0.1:18789:18789"
+    entrypoint: ["sh", "-c"]
     command:
-      [
-        "node",
-        "dist/index.js",
-        "gateway",
-        "--bind",
-        "lan",
-        "--port",
-        "18789",
-        "--allow-unconfigured",
-      ]
+      - |
+        mkdir -p /home/node/.openclaw/workspace /home/node/.openclaw/skills /home/node/.mcporter
+        cp /tmp/staging/openclaw.json /home/node/.openclaw/openclaw.json
+        sed -i "s|\${TELEGRAM_BOT_TOKEN}|$TELEGRAM_BOT_TOKEN|g" /home/node/.openclaw/openclaw.json
+        sed -i "s|\${TELEGRAM_ALLOWED_USERS}|$TELEGRAM_ALLOWED_USERS|g" /home/node/.openclaw/openclaw.json
+        sed -i "s|\${OPENCLAW_AUTH_TOKEN}|$OPENCLAW_AUTH_TOKEN|g" /home/node/.openclaw/openclaw.json
+        cp /tmp/staging/mcporter.json /home/node/.mcporter/mcporter.json
+        cp -r /tmp/staging/skills/kubernetes-ops /home/node/.openclaw/skills/kubernetes-ops
+        echo ""
+        echo "=========================================="
+        echo "  OpenClaw Gateway - Access URLs"
+        echo "=========================================="
+        echo "  UI:  http://localhost:18789/?token=$OPENCLAW_AUTH_TOKEN"
+        echo "  API: http://localhost:18789"
+        echo "=========================================="
+        echo ""
+        exec node dist/index.js gateway --bind lan --port 18789 --allow-unconfigured
     networks:
       - openclaw-net
     depends_on:
@@ -57,10 +72,15 @@ services:
     image: ghcr.io/containers/kubernetes-mcp-server:latest
     container_name: k8s-mcp-server
     restart: unless-stopped
+    environment:
+      KUBECONFIG: /home/nonroot/.kube/config
     command:
       - "--port"
       - "8089"
       - "--read-only"
+      - "--stateless"
+      - "--cluster-provider"
+      - "kubeconfig"
       - "--log-level"
       - "2"
     volumes:
@@ -69,6 +89,7 @@ services:
       - "8089"
     networks:
       - openclaw-net
+      - minikube
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -81,9 +102,11 @@ services:
           cpus: "0.1"
 
 volumes:
-  openclaw-workspace:
+  openclaw-data:
     driver: local
 
 networks:
   openclaw-net:
     driver: bridge
+  minikube:
+    external: true

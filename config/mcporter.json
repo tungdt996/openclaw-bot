@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "kubernetes": {
+      "url": "http://kubernetes-mcp-server:8089/sse",
+      "transport": "sse"
+    }
+  }
+}

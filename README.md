@@ -33,9 +33,18 @@ flowchart LR
 
 | Service | Role | Image |
 |---------|------|-------|
-| OpenClaw | AI gateway, Telegram integration, tool orchestration | `ghcr.io/openclaw/openclaw:latest` |
+| OpenClaw + mcporter | AI gateway, Telegram integration, tool orchestration, MCP client | `ghcr.io/openclaw/openclaw:latest` + mcporter |
 | Kubernetes MCP Server | K8s API bridge via Model Context Protocol | `ghcr.io/containers/kubernetes-mcp-server:latest` |
 | OpenAI ChatGPT | AI reasoning and tool selection | External API |
+
+**How MCP integration works:**
+
+OpenClaw does not have a built-in MCP client. This project uses [mcporter](https://www.npmjs.com/package/mcporter) (the officially recommended MCP server manager) as the bridge:
+
+1. **mcporter** is pre-installed in the OpenClaw container via `Dockerfile.openclaw`
+2. **`config/mcporter.json`** configures the connection to the K8s MCP server (SSE transport)
+3. **`skills/kubernetes-ops/SKILL.md`** teaches the AI agent how to use `mcporter` CLI to call K8s tools
+4. The AI uses OpenClaw's `exec` tool to run `mcporter tool call kubernetes <tool> '<args>'`
 
 ## Prerequisites
 
@@ -81,9 +90,13 @@ kubectl config view --minify --flatten > kubeconfig/config
 
 The default `config/openclaw.json` uses `${VAR}` environment variable interpolation, so values from `.env` are applied automatically. No manual edits needed unless you want to customize further.
 
-### 4. Start the services
+### 4. Build and start the services
 
 ```bash
+# Build the custom OpenClaw image (installs mcporter)
+docker compose build
+
+# Start all services
 docker compose up -d
 ```
 
@@ -131,19 +144,46 @@ Key sections:
 - **identity** - Bot name and personality theme
 - **agents.defaults.model** - AI model selection (default: `openai/gpt-4o`)
 - **channels.telegram** - Telegram bot settings and access control
-- **mcpServers.kubernetes** - Kubernetes MCP Server connection URL (SSE transport)
 - **gateway** - Gateway port and UI settings
+
+### mcporter Config (`config/mcporter.json`)
+
+Defines the connection to the Kubernetes MCP Server:
+
+```json
+{
+  "mcpServers": {
+    "kubernetes": {
+      "url": "http://kubernetes-mcp-server:8089/sse",
+      "transport": "sse"
+    }
+  }
+}
+```
+
+The URL uses the Docker Compose service name `kubernetes-mcp-server` which resolves via Docker's internal DNS.
+
+### Custom Skill (`skills/kubernetes-ops/SKILL.md`)
+
+Teaches the AI agent how to use `mcporter` CLI to call Kubernetes tools. The agent uses OpenClaw's built-in `exec` tool to run commands like:
+
+```bash
+mcporter tool call kubernetes pods_list_in_namespace '{"namespace":"production"}'
+```
+
+Edit the SKILL.md to add or customize the instructions the AI follows.
 
 ### Kubernetes MCP Server
 
-The MCP server runs in **read-only mode** by default for safety. To enable write operations (create, update, delete resources), remove `--read-only` from the command in `docker-compose.yml`:
+The MCP server runs in **read-only** and **stateless** mode by default for safety and container compatibility. To enable write operations, remove `--read-only` from the command in `docker-compose.yml`:
 
 ```yaml
 kubernetes-mcp-server:
   command:
     - "--port"
     - "8089"
-    # - "--read-only"    # Commented out to enable write operations
+    # - "--read-only"
+    - "--stateless"
     - "--log-level"
     - "2"
 ```
@@ -156,6 +196,7 @@ kubernetes-mcp-server:
     - "--port"
     - "8089"
     - "--read-only"
+    - "--stateless"
     - "--toolsets"
     - "core,config,helm"
     - "--log-level"
@@ -204,6 +245,7 @@ docker compose down -v                    # Also remove volumes (loses state)
 
 ```bash
 docker compose pull
+docker compose build
 docker compose up -d
 ```
 
