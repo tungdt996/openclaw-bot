@@ -18,6 +18,7 @@ services:
       - ./config/openclaw.json:/tmp/staging/openclaw.json:ro
       - ./config/mcporter.json:/tmp/staging/mcporter.json:ro
       - ./skills/kubernetes-ops:/tmp/staging/skills/kubernetes-ops:ro
+      - ./skills/kubernetes-ops:/app/skills/kubernetes-ops:ro
       - openclaw-data:/home/node/.openclaw
     ports:
       - "127.0.0.1:18789:18789"

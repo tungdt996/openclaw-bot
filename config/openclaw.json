@@ -7,7 +7,7 @@
       workspace: "~/.openclaw/workspace",
       userTimezone: "Asia/Ho_Chi_Minh",
       model: {
-        primary: "openai/gpt-4o",
+        primary: "openai/gpt-4.1-nano",
         fallbacks: ["openai/gpt-4o-mini"]
       },
       thinkingDefault: "low",

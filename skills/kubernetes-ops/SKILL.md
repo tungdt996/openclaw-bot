@@ -14,7 +14,13 @@ Use the `exec` tool to run mcporter commands. The MCP server named **kubernetes*
 Use this pattern to call any Kubernetes MCP tool:
 
 ```bash
-mcporter tool call kubernetes <tool_name> '<json_arguments>'
+mcporter call kubernetes.<tool_name> [json_arguments]
+```
+
+Example:
+```bash
+mcporter call kubernetes.events_list
+mcporter call kubernetes.pods_list '{"namespace":"default"}'
 ```
 
 ## Output formatting rules
@@ -91,96 +97,96 @@ When the user asks general questions like "cluster co on khong?" or "check clust
 
 ```bash
 # List all pods across all namespaces
-mcporter tool call kubernetes pods_list '{}'
+mcporter call kubernetes.pods_list
 
 # List pods in a specific namespace
-mcporter tool call kubernetes pods_list_in_namespace '{"namespace":"default"}'
+mcporter call kubernetes.pods_list_in_namespace '{"namespace":"default"}'
 
 # Get a specific pod
-mcporter tool call kubernetes pods_get '{"name":"my-pod","namespace":"default"}'
+mcporter call kubernetes.pods_get '{"name":"my-pod","namespace":"default"}'
 
 # Get pod logs (last 100 lines)
-mcporter tool call kubernetes pods_log '{"name":"my-pod","namespace":"default","tail":100}'
+mcporter call kubernetes.pods_log '{"name":"my-pod","namespace":"default","tail":100}'
 
 # Get previous container logs (for crashed pods)
-mcporter tool call kubernetes pods_log '{"name":"my-pod","namespace":"default","previous":true}'
+mcporter call kubernetes.pods_log '{"name":"my-pod","namespace":"default","previous":true}'
 
 # Resource usage for pods
-mcporter tool call kubernetes pods_top '{"namespace":"default"}'
+mcporter call kubernetes.pods_top '{"namespace":"default"}'
 ```
 
 ### Execute commands in pods
 
 ```bash
-mcporter tool call kubernetes pods_exec '{"name":"my-pod","namespace":"default","command":["ls","-la","/tmp"]}'
+mcporter call kubernetes.pods_exec '{"name":"my-pod","namespace":"default","command":["ls","-la","/tmp"]}'
 ```
 
 ### Generic Kubernetes resources (Deployments, Services, Ingress, etc.)
 
 ```bash
 # List deployments
-mcporter tool call kubernetes resources_list '{"apiVersion":"apps/v1","kind":"Deployment","namespace":"default"}'
+mcporter call kubernetes.resources_list '{"apiVersion":"apps/v1","kind":"Deployment","namespace":"default"}'
 
 # Get a specific deployment
-mcporter tool call kubernetes resources_get '{"apiVersion":"apps/v1","kind":"Deployment","name":"my-app","namespace":"default"}'
+mcporter call kubernetes.resources_get '{"apiVersion":"apps/v1","kind":"Deployment","name":"my-app","namespace":"default"}'
 
 # List services
-mcporter tool call kubernetes resources_list '{"apiVersion":"v1","kind":"Service","namespace":"default"}'
+mcporter call kubernetes.resources_list '{"apiVersion":"v1","kind":"Service","namespace":"default"}'
 
 # List ingresses
-mcporter tool call kubernetes resources_list '{"apiVersion":"networking.k8s.io/v1","kind":"Ingress"}'
+mcporter call kubernetes.resources_list '{"apiVersion":"networking.k8s.io/v1","kind":"Ingress"}'
 
 # List nodes
-mcporter tool call kubernetes resources_list '{"apiVersion":"v1","kind":"Node"}'
+mcporter call kubernetes.resources_list '{"apiVersion":"v1","kind":"Node"}'
 
 # List all resources with label selector
-mcporter tool call kubernetes resources_list '{"apiVersion":"apps/v1","kind":"Deployment","labelSelector":"app=nginx"}'
+mcporter call kubernetes.resources_list '{"apiVersion":"apps/v1","kind":"Deployment","labelSelector":"app=nginx"}'
 ```
 
 ### Namespaces and events
 
 ```bash
 # List all namespaces
-mcporter tool call kubernetes namespaces_list '{}'
+mcporter call kubernetes.namespaces_list
 
 # List events (all namespaces)
-mcporter tool call kubernetes events_list '{}'
+mcporter call kubernetes.events_list
 
 # List events in a specific namespace
-mcporter tool call kubernetes events_list '{"namespace":"production"}'
+mcporter call kubernetes.events_list '{"namespace":"production"}'
 ```
 
 ### Node metrics
 
 ```bash
 # Resource usage for all nodes
-mcporter tool call kubernetes nodes_top '{}'
+mcporter call kubernetes.nodes_top
 
 # Resource usage for a specific node
-mcporter tool call kubernetes nodes_top '{"name":"worker-1"}'
+mcporter call kubernetes.nodes_top '{"name":"worker-1"}'
 
 # Detailed node stats
-mcporter tool call kubernetes nodes_stats_summary '{"name":"worker-1"}'
+mcporter call kubernetes.nodes_stats_summary '{"name":"worker-1"}'
 ```
 
 ### Cluster configuration
 
 ```bash
 # View current kubeconfig
-mcporter tool call kubernetes configuration_view '{"minified":true}'
+mcporter call kubernetes.configuration_view '{"minified":true}'
 
 # List available contexts
-mcporter tool call kubernetes configuration_contexts_list '{}'
+mcporter call kubernetes.configuration_contexts_list
 ```
 
 ### Scaling resources
 
 ```bash
 # Get current scale
-mcporter tool call kubernetes resources_scale '{"apiVersion":"apps/v1","kind":"Deployment","name":"my-app","namespace":"default"}'
+mcporter call kubernetes.resources_scale '{"apiVersion":"apps/v1","kind":"Deployment","name":"my-app","namespace":"default"}'
 
 # Scale a deployment (NOTE: requires MCP server NOT in read-only mode)
-mcporter tool call kubernetes resources_scale '{"apiVersion":"apps/v1","kind":"Deployment","name":"my-app","namespace":"default","scale":3}'
+mcporter call kubernetes.resources_scale '{"apiVersion":"apps/v1","kind":"Deployment","name":"my-app","namespace":"default","scale":3}'
 ```
 
 ## Discovering available tools
@@ -188,7 +194,7 @@ mcporter tool call kubernetes resources_scale '{"apiVersion":"apps/v1","kind":"D
 If unsure what tools are available, list them:
 
 ```bash
-mcporter tools list kubernetes
+mcporter tools list
 ```
 
 ## Important notes
