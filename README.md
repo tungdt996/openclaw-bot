@@ -156,6 +156,103 @@ Open Telegram and message your bot. Try commands like:
 - "Describe the deployment named nginx in default namespace"
 - "Show logs for pod my-app-xyz in staging namespace"
 
+## Alert Integration (Auto-Debug)
+
+The bot can automatically receive K8s alerts from Prometheus/Alertmanager and debug them — getting pod logs, describing resources, checking events, and suggesting fixes. **Read-only: the bot only suggests fixes, never modifies the cluster.**
+
+### How it works
+
+```
+Alertmanager → POST /webhook → alert-receiver → Telegram group → Bot auto-debug → Debug report
+```
+
+1. Alertmanager sends webhook to the `alert-receiver` service
+2. `alert-receiver` formats the alert and posts it to a Telegram group with `@openclaw_k8s_bot` mention
+3. OpenClaw bot receives the message, recognizes it as an alert, runs the debug workflow
+4. Bot responds with root cause analysis and suggested fixes
+
+### Setup
+
+#### 1. Create Telegram group and get Chat ID
+
+```bash
+# 1. Create a group on Telegram (e.g., "K8s Alerts")
+# 2. Add @openclaw_k8s_bot to the group
+# 3. Send any message in the group
+# 4. Get the group chat ID:
+curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates" | python3 -m json.tool
+# Look for: "chat": {"id": -100XXXXXXXXXX, "type": "group", ...}
+# The chat id is a NEGATIVE number
+```
+
+#### 2. Update `.env`
+
+```bash
+TELEGRAM_GROUP_CHAT_ID=-100XXXXXXXXXX   # your actual group chat ID
+BOT_USERNAME=openclaw_k8s_bot
+```
+
+#### 3. Configure Alertmanager
+
+Add the webhook receiver to your Alertmanager config on the K8s cluster:
+
+```yaml
+# alertmanager.yml
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'namespace']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: 'openclaw-bot'
+      continue: true  # also send to default receiver
+
+receivers:
+  - name: 'default'
+    # your existing receiver config
+  - name: 'openclaw-bot'
+    webhook_configs:
+      - url: 'http://<SERVER_IP>:9095/webhook'
+        send_resolved: true
+```
+
+Replace `<SERVER_IP>` with the IP/hostname where docker compose is running.
+
+#### 4. Rebuild and start
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+#### 5. Test with a fake alert
+
+```bash
+curl -X POST http://localhost:9095/webhook \
+  -H "Content-Type: application/json" \
+  -d '{
+    "alerts": [{
+      "status": "firing",
+      "labels": {
+        "alertname": "PodCrashLooping",
+        "namespace": "default",
+        "pod": "my-app-test-pod",
+        "severity": "critical"
+      },
+      "annotations": {
+        "description": "Pod my-app-test-pod in namespace default is crash looping",
+        "summary": "Pod crash looping"
+      }
+    }]
+  }'
+```
+
+Check the Telegram group — you should see the alert message and the bot's debug report.
+
 ## Configuration Reference
 
 ### Environment Variables (`.env`)
@@ -165,6 +262,8 @@ Open Telegram and message your bot. Try commands like:
 | `OPENAI_API_KEY` | OpenAI API key for ChatGPT | Yes |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token from @BotFather | Yes |
 | `TELEGRAM_ALLOWED_USERS` | Comma-separated Telegram user IDs | Yes |
+| `TELEGRAM_GROUP_CHAT_ID` | Telegram group chat ID for alerts (negative number) | Yes (for alerts) |
+| `BOT_USERNAME` | Bot username without @ (default: `openclaw_k8s_bot`) | No |
 
 ### OpenClaw Config (`config/openclaw.json`)
 

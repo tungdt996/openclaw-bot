@@ -204,3 +204,131 @@ mcporter tools list
 - For `resources_list` and `resources_get`, you need both `apiVersion` and `kind`. Common combinations: `v1 Pod`, `v1 Service`, `v1 Node`, `apps/v1 Deployment`, `apps/v1 StatefulSet`, `networking.k8s.io/v1 Ingress`.
 - Pod logs default to the last 100 lines. Use `tail` parameter to adjust.
 - When diagnosing issues, check events first (`events_list`), then pod status, then logs.
+
+## Alert auto-debug workflow
+
+When you receive a message in a Telegram group that matches the alert pattern below, you MUST automatically start the debug workflow. Do NOT wait for additional instructions.
+
+### How to recognize an alert
+
+Alert messages from the alert-receiver service follow this pattern:
+```
+🚨 K8S ALERT: <alertname>
+📌 Status: `FIRING`
+⏰ Thời gian: ...
+🔴 Severity: `critical`
+📦 Namespace: `<namespace>`
+🎯 Pod: `<pod>`
+...
+@openclaw_k8s_bot hãy debug alert này
+```
+
+When you see a message containing `🚨 K8S ALERT:` — treat it as an alert and begin debugging immediately.
+
+### Debug procedure
+
+Follow these steps **in order**. Execute ALL steps before writing your response:
+
+**Step 1: Parse alert info**
+Extract from the alert message:
+- `alertname` — the alert name
+- `namespace` — the K8s namespace
+- `pod` — the pod name (may be `N/A` for non-pod alerts)
+- `severity` — critical/warning/info
+- `description` — what happened
+
+**Step 2: Get pod details (if pod is specified)**
+```bash
+mcporter call kubernetes.pods_get '{"name":"<pod>","namespace":"<namespace>"}'
+```
+Look for: pod status, restart count, container statuses, conditions, reason for failure.
+
+**Step 3: Get pod logs**
+```bash
+# Current logs (last 200 lines)
+mcporter call kubernetes.pods_log '{"name":"<pod>","namespace":"<namespace>","tail":200}'
+```
+Look for: error messages, stack traces, connection failures, OOM messages.
+
+**Step 4: Get previous container logs (if pod is crashing/restarting)**
+```bash
+mcporter call kubernetes.pods_log '{"name":"<pod>","namespace":"<namespace>","previous":true,"tail":200}'
+```
+This is critical for CrashLoopBackOff — the current container may not have useful logs.
+
+**Step 5: Check events in the namespace**
+```bash
+mcporter call kubernetes.events_list '{"namespace":"<namespace>"}'
+```
+Look for: Warning events, FailedScheduling, FailedMount, BackOff, Unhealthy, OOMKilled.
+
+**Step 6: Check the owning resource (Deployment/StatefulSet/DaemonSet)**
+If the pod name follows a pattern like `<deployment>-<replicaset>-<hash>`:
+```bash
+# Extract deployment name from pod name (remove last 2 segments)
+mcporter call kubernetes.resources_get '{"apiVersion":"apps/v1","kind":"Deployment","name":"<deployment>","namespace":"<namespace>"}'
+```
+Look for: replicas, update strategy, resource limits, image version.
+
+**Step 7: Check resource usage (if applicable)**
+```bash
+mcporter call kubernetes.pods_top '{"namespace":"<namespace>"}'
+```
+Look for: CPU/memory usage close to limits (potential OOM).
+
+### Alert-specific debug focus
+
+Depending on the `alertname`, focus your investigation:
+
+| Alert | Primary focus |
+|-------|--------------|
+| `PodCrashLooping` / `CrashLoopBackOff` | Steps 3-4 (logs + previous logs). Look for startup errors. |
+| `PodNotReady` | Step 2 (pod conditions). Check readiness probe failures. |
+| `OOMKilled` | Step 7 (resource usage) + Step 2 (container lastState). |
+| `HighMemoryUsage` / `HighCPUUsage` | Step 7 (pods_top). Compare with resource limits. |
+| `PodEvicted` | Step 5 (events). Check node pressure conditions. |
+| `ImagePullBackOff` | Step 5 (events). Check image name, registry auth. |
+| `FailedScheduling` | Step 5 (events). Check node resources, taints, affinity. |
+| `VolumeMount` errors | Step 5 (events). Check PVC status, storage class. |
+
+For alerts not in this table, run ALL steps and analyze based on collected data.
+
+### Response format
+
+After completing debug steps, respond in this format:
+
+```
+🔍 **DEBUG REPORT: <alertname>**
+
+📋 **Thông tin alert:**
+- Alert: `<alertname>`
+- Namespace: `<namespace>`
+- Pod: `<pod>`
+- Severity: `<severity>`
+
+🔎 **Phân tích nguyên nhân:**
+<Describe root cause based on collected evidence from logs, events, pod status>
+
+📊 **Bằng chứng:**
+- Pod status: <status>
+- Restart count: <count>
+- Key log lines: <relevant log excerpts>
+- Related events: <relevant events>
+
+🛠️ **Cách fix đề xuất:**
+1. <First recommended fix>
+2. <Second recommended fix if applicable>
+3. <Additional steps if needed>
+
+⚠️ **Lưu ý:** Bot chỉ đề xuất, KHÔNG tự động thực hiện thay đổi trên hệ thống. Vui lòng review và thực hiện thủ công.
+```
+
+### Important rules for alert debugging
+
+1. **NEVER modify the cluster** — read-only mode. Only suggest fixes.
+2. **Always respond in Vietnamese** — this is the user preference.
+3. **Be specific** — cite actual log lines, event messages, and status values.
+4. **Be actionable** — suggest concrete kubectl commands the user can run to fix.
+5. **Handle missing data gracefully** — if a pod doesn't exist or logs are empty, say so and adjust your analysis.
+6. **For RESOLVED alerts** (status = `RESOLVED`) — briefly acknowledge the resolution, no need for full debug.
+7. **Group multiple alerts** — if multiple alerts arrive close together for the same pod/deployment, do ONE consolidated debug report.

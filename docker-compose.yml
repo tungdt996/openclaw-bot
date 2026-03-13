@@ -14,6 +14,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_ALLOWED_USERS: ${TELEGRAM_ALLOWED_USERS}
       OPENCLAW_AUTH_TOKEN: ${OPENCLAW_AUTH_TOKEN}
+      TELEGRAM_GROUP_CHAT_ID: ${TELEGRAM_GROUP_CHAT_ID}
     volumes:
       - ./config/openclaw.json:/tmp/staging/openclaw.json:ro
       - ./config/mcporter.json:/tmp/staging/mcporter.json:ro
@@ -30,6 +31,7 @@ services:
         sed -i "s|\${TELEGRAM_BOT_TOKEN}|$TELEGRAM_BOT_TOKEN|g" /home/node/.openclaw/openclaw.json
         sed -i "s|\${TELEGRAM_ALLOWED_USERS}|$TELEGRAM_ALLOWED_USERS|g" /home/node/.openclaw/openclaw.json
         sed -i "s|\${OPENCLAW_AUTH_TOKEN}|$OPENCLAW_AUTH_TOKEN|g" /home/node/.openclaw/openclaw.json
+        sed -i "s|\${TELEGRAM_GROUP_CHAT_ID}|$TELEGRAM_GROUP_CHAT_ID|g" /home/node/.openclaw/openclaw.json
         cp /tmp/staging/mcporter.json /home/node/.mcporter/mcporter.json
         cp -r /tmp/staging/skills/kubernetes-ops /home/node/.openclaw/skills/kubernetes-ops
         echo ""

@@ -35,7 +35,7 @@
       dmPolicy: "allowlist",
       allowFrom: ["${TELEGRAM_ALLOWED_USERS}"],
       groupPolicy: "allowlist",
-      groupAllowFrom: ["${TELEGRAM_ALLOWED_USERS}"],
+      groupAllowFrom: ["${TELEGRAM_ALLOWED_USERS}", "${TELEGRAM_GROUP_CHAT_ID}"],
       groups: {
         "*": { requireMention: true }
       }
